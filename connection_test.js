@@ -1,5 +1,13 @@
 require("dotenv").config();
+const express = require("express");
+const app = express();
+const port = 8080;
+var cors = require('cors');
+app.use(cors());
 
+app.listen(port, () => {
+    console.log(`Listening on port ${port}`);
+});
 
 const uri = process.env.NEO4J_URI;
 const user = process.env.NEO4J_USER;
@@ -10,6 +18,97 @@ const neo4j = require("neo4j-driver");
 const driver = neo4j.driver(uri, neo4j.auth.basic(user, password));
 const session = driver.session();
 const personName = "Alice";
+const sampleData = `
+{
+    "classes":[
+        {
+            "courseID":"COM SCI 32",
+            "courseName":"Introduction to Computer Science II",
+            "units":4,
+            "departmentID":"CS",
+            "courseDescription":"introduction blah blah",
+            "coursePageLink":"cs32 link",
+            "courseAvailabilityLink":"blah",
+            "professor":"Smallberg",
+            "quarter":"Fall 22",
+            "location":"blah",
+            "days":"MW",
+            "time":"10:00 AM",
+            "discussions":[
+                {
+                    "discussionID":123456789,
+                    "section":"1A",
+                    "ta":"ta1",
+                    "location":"blah1",
+                    "day":"F",
+                    "time":"10:00 AM"
+                },
+                {
+                    "discussionID":111111111,
+                    "section":"1B",
+                    "ta":"ta2",
+                    "location":"blah2",
+                    "day":"F",
+                    "time":"12:00 PM"
+                }
+            ],
+            "prereqs":[
+                "COM SCI 31"
+            ]
+        }
+    ]
+}
+`;
+
+
+app.get("/importdata", (req, res) => {
+    // let data = JSON.parse(req.data);
+    importFromJSON(JSON.parse(sampleData)).then((result) => res.send("done importing data"));
+});
+
+async function importFromJSON(data) {
+    const classes = data.classes;
+    try {
+        for (const cls of classes) {
+            console.log("creating/updating course node")
+            let result = await session.run(
+                `MERGE (:Course {CourseID: "${cls.courseID}", Name: "${cls.courseName}", Units: ${cls.units}, DepartmentID: "${cls.departmentID}", Description: "${cls.courseDescription}", CoursePageLink: "${cls.coursePageLink}", AvailabilityLink: "${cls.courseAvailabilityLink}"})`
+            );
+            console.log("creating/updating term node")
+            result = await session.run(
+                `MERGE (:Term {Quarter: "${cls.quarter}", Professor: "${cls.professor}", Location: "${cls.location}", Time: "${cls.time}"})`
+            );
+            console.log("creating course term relationship")
+            result = await session.run(
+                `MERGE (c1:Course {CourseID: "${cls.courseID}"}) MERGE (t1:Term {Quarter: "${cls.quarter}", Professor: "${cls.professor}"}) MERGE (c1)-[:TAUGHT_BY]->(t1)`
+            );
+            console.log("creating prereq relationships")
+            for (const prereq of cls.prereqs) {
+                result = await session.run(
+                    `MERGE (c1:Course {CourseID: "${prereq}"}) MERGE (c2:Course {CourseID: "${cls.courseID}"}) MERGE (c1)-[:IS_PREREQ_OF]->(c2)`
+                );
+            }
+            console.log("creating discussion node/relationships")
+            for (const discussion of cls.discussions) {
+                result = await session.run(
+                    `MERGE (:Discussion {DiscussionID: "${discussion.discussionID}", Section: "${discussion.section}", TA: "${discussion.ta}", Location: "${discussion.location}", Time: "${discussion.time}"})`
+                );
+                result = await session.run(
+                    `MERGE (c1:Course {CourseID: "${cls.courseID}"}) MERGE (d1:Discussion {DiscussionID: "${discussion.discussionID}"}) MERGE (c1)-[:HAS_DISCUSSION]->(d1)`
+                );
+                result = await session.run(
+                    `MERGE (d1:Discussion {DiscussionID: "${discussion.discussionID}"}) MERGE (t1:Term {Quarter: "${cls.quarter}", Professor: "${cls.professor}"}) MERGE (d1)-[:AVAILABLE_IN]->(t1)`
+                );
+            }
+            console.log("done");
+        }
+    } finally {
+        await session.close();
+    }
+
+    // on application exit:
+    await driver.close();
+}
 
 async function test() {
     try {
@@ -123,4 +222,4 @@ async function test() {
     await driver.close();
 }
 
-test();
+// test();

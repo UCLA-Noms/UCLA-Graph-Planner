@@ -17,7 +17,9 @@
   },
   "homepage": "https://github.com/henrywangzh/UCLA-Graph-Planner#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "dotenv": "^16.0.3",
+    "express": "^4.18.2",
     "neo4j-driver": "^5.8.0"
   }
 }
