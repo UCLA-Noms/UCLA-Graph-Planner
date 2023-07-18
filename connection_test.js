@@ -4,6 +4,7 @@ const app = express();
 const port = 8080;
 var cors = require('cors');
 app.use(cors());
+app.use(express.json());
 
 app.listen(port, () => {
     console.log(`Listening on port ${port}`);
@@ -61,9 +62,12 @@ const sampleData = `
 `;
 
 
-app.get("/importdata", (req, res) => {
-    // let data = JSON.parse(req.data);
-    importFromJSON(JSON.parse(sampleData)).then((result) => res.send("done importing data"));
+app.post("/importdata", (req, res) => {
+    let data = req.body;
+    console.log(data);
+    // importFromJSON(JSON.parse(sampleData)).then((result) => res.send("done importing data")); // sample data
+    importFromJSON(data).then((result) => res.send("done importing data"));
+
 });
 
 async function importFromJSON(data) {
