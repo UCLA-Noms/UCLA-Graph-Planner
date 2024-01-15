@@ -1,6 +1,14 @@
 # UCLA-Graph-Planner
 ## Overview
 This repo is a node server that accepts JSON-formatted course data and uploads that data to Neo4j.
+## Setup
+1. Make sure a .env with the following format is added in the same directory as connectiontest.js
+```
+NEO4J_URI=[neo4j uri]
+NEO4J_USER=[username]
+NEO4J_PASSWORD=[password]
+```
+2. Run ```npm install```
 ## Course data format
 The format of the JSON input to the Neo4j scripts should be like this following example (CS 111 for fall 2023):
 ```
